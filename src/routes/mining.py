@@ -1,35 +1,31 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import Dict
-
 from src.feature.proof_of_work import ProofOfWork
 from src.models.block import Block
 
-app = FastAPI()
+router = APIRouter()
 
 class MiningRequest(BaseModel):
     block_number: int
     previous_hash: str
-    transactions: Dict
+    transactions: list
 
-@app.post("/mine")
-async def mine(mining_request: MiningRequest):
-    proof_of_work = ProofOfWork(mining_request.block_number, mining_request.previous_hash, mining_request.transactions)
-    difficulty = 4
-    start_time = time()
-    proof_of_work.mine(difficulty)
-    end_time = time()
-    block = Block(proof_of_work.get_block_number(), proof_of_work.get_previous_hash(), proof_of_work.get_transactions(), proof_of_work.get_nonce(), proof_of_work.get_hash())
-    return {
-        "block_number": block.get_block_number(),
-        "previous_hash": block.get_previous_hash(),
-        "transactions": block.get_transactions(),
-        "nonce": block.get_nonce(),
-        "hash": block.get_hash(),
-        "time": end_time - start_time
-    }
+@router.post("/mine")
+async def mine_block(mining_request: MiningRequest):
+    block = Block(mining_request.block_number, mining_request.previous_hash, mining_request.transactions)
+    difficulty = 4  # adjust difficulty level as needed
+    if block.mine(difficulty):
+        return {"message": "Block mined successfully", "hash": block.hash}
+    else:
+        raise HTTPException(status_code=400, detail="Failed to mine block")
 
-# Example usage
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+@router.get("/verify/{block_hash}")
+async def verify_block(block_hash: str):
+    # retrieve block from cache or database
+    block = Block(1, "previous_hash", ["transaction1", "transaction2"])
+    block.hash = block_hash
+    difficulty = 4  # adjust difficulty level as needed
+    if block.verify(difficulty):
+        return {"message": "Block is valid"}
+    else:
+        raise HTTPException(status_code=400, detail="Block is invalid")
