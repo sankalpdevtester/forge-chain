@@ -1,39 +1,31 @@
 from typing import List
 from src.models.block import Block
+from src.feature.proof_of_work import ProofOfWork
 
 class Blockchain:
     def __init__(self):
         self.chain = [self.create_genesis_block()]
-        self.difficulty = 4
+        self.difficulty = 4  # adjust difficulty level as needed
 
     def create_genesis_block(self) -> Block:
-        block_number = 0
-        previous_hash = "0" * 64
-        transactions = {"sender": "Genesis", "receiver": "Genesis", "amount": 0}
-        nonce = 0
-        hash = "0000000000000000000000000000000000000000000000000000000000000000"
-        return Block(block_number, previous_hash, transactions, nonce, hash)
+        return Block(0, "0", ["Genesis transaction"])
 
     def get_latest_block(self) -> Block:
         return self.chain[-1]
 
     def add_block(self, block: Block) -> bool:
-        if block.validate(self.difficulty):
+        if block.verify(self.difficulty):
             self.chain.append(block)
             return True
-        return False
+        else:
+            return False
 
-    def get_chain(self) -> List[Block]:
-        return self.chain
-
-# Example usage
-if __name__ == "__main__":
-    blockchain = Blockchain()
-    block_number = 1
-    previous_hash = blockchain.get_latest_block().get_hash()
-    transactions = {"sender": "A", "receiver": "B", "amount": 10}
-    nonce = 100
-    hash = "0000000000000000000000000000000000000000000000000000000000000000"
-    block = Block(block_number, previous_hash, transactions, nonce, hash)
-    blockchain.add_block(block)
-    print(f"Blockchain length: {len(blockchain.get_chain())}")
+    def validate_chain(self) -> bool:
+        for i in range(1, len(self.chain)):
+            current_block = self.chain[i]
+            previous_block = self.chain[i - 1]
+            if current_block.hash != current_block.proof_of_work.get_hash():
+                return False
+            if current_block.previous_hash != previous_block.hash:
+                return False
+        return True
