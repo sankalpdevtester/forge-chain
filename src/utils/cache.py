@@ -8,16 +8,16 @@ class Cache:
 
     def get(self, key: str) -> Any:
         if key in self.cache:
-            value, expires_at = self.cache[key]
-            if datetime.now() < expires_at:
+            value, expiry = self.cache[key]
+            if datetime.now() < expiry:
                 return value
             else:
                 del self.cache[key]
         return None
 
     def set(self, key: str, value: Any) -> None:
-        expires_at = datetime.now() + timedelta(seconds=self.ttl)
-        self.cache[key] = (value, expires_at)
+        expiry = datetime.now() + timedelta(seconds=self.ttl)
+        self.cache[key] = (value, expiry)
 
     def delete(self, key: str) -> None:
         if key in self.cache:
@@ -32,22 +32,24 @@ def cached(ttl: int = 60):
     def decorator(func):
         def wrapper(*args, **kwargs):
             key = f"{func.__name__}:{str(args)}:{str(kwargs)}"
-            cached_value = cache.get(key)
-            if cached_value is not None:
-                return cached_value
-            value = func(*args, **kwargs)
-            cache.set(key, value, ttl)
-            return value
+            value = cache.get(key)
+            if value is not None:
+                return value
+            else:
+                value = func(*args, **kwargs)
+                cache.set(key, value)
+                return value
         return wrapper
     return decorator
 
 # Example usage:
-# @cached(ttl=30)  # 30 seconds TTL
-# def get_blockchain_info():
-#     # simulate an expensive operation
-#     import time
-#     time.sleep(2)
-#     return {"blockchain_info": "example"}
+@cached(ttl=30)  # 30 seconds TTL
+def get_blockchain_info() -> Dict:
+    # Simulate an expensive operation
+    import time
+    time.sleep(2)
+    return {"blocks": 100, "transactions": 500}
 
-# print(get_blockchain_info())  # first call takes 2 seconds
-# print(get_blockchain_info())  # subsequent calls return cached value
+# Test the cache
+print(get_blockchain_info())  # Takes 2 seconds
+print(get_blockchain_info())  # Returns immediately from cache
